@@ -4,10 +4,8 @@ import com.dam.accesodatos.model.User;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 
-import javax.naming.spi.DirectoryManager;
 import java.io.*;
 import java.nio.file.*;
-import java.nio.file.attribute.FileAttribute;
 import java.text.SimpleDateFormat;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -77,11 +75,11 @@ public class FileUserServiceImpl implements FileUserService {
         String tipo = file.isFile() ? "archivo" : "directorio";
         
         // Paso 4: Obtener tamaño (solo para archivos)
-        String tamaño;
+        String tamanio;
         if (file.isFile()) {
-            tamaño = file.length() + " bytes";
+            tamanio = file.length() + " bytes";
         } else {
-            tamaño = "N/A (directorio)";
+            tamanio = "N/A (directorio)";
         }
         
         // Paso 5: Obtener permisos
@@ -97,7 +95,7 @@ public class FileUserServiceImpl implements FileUserService {
         
         // Paso 7: Construir string con formato especificado
         return String.format("Tipo: %s, Tamaño: %s, Permisos: %s, Fecha: %s", 
-                           tipo, tamaño, permisos, fechaFormateada);
+                           tipo, tamanio, permisos, fechaFormateada);
     }
 
     @Override
@@ -142,7 +140,6 @@ public class FileUserServiceImpl implements FileUserService {
         try(FileReader fileReader = new FileReader(file)) {
             // read() devuelve -1 cuando se llega al final del archivo.
             while (fileReader.read() != -1){
-
             }
         }catch (IOException e){
             return "Error leyendo con FileReader: " + e.getMessage();
