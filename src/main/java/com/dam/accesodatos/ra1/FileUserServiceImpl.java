@@ -3,26 +3,14 @@ package com.dam.accesodatos.ra1;
 import com.dam.accesodatos.model.User;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
-import org.w3c.dom.Document;
-import org.xml.sax.helpers.DefaultHandler;
 
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.SAXParser;
-import javax.xml.parsers.SAXParserFactory;
-import javax.xml.transform.OutputKeys;
-import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerFactory;
-import javax.xml.transform.dom.DOMSource;
-import javax.xml.transform.stream.StreamResult;
+import javax.naming.spi.DirectoryManager;
 import java.io.*;
 import java.nio.file.*;
+import java.nio.file.attribute.FileAttribute;
 import java.text.SimpleDateFormat;
-import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 
 /**
  * IMPLEMENTACIÓN PARA ESTUDIANTES - RA1: Gestión de Ficheros
@@ -113,9 +101,9 @@ public class FileUserServiceImpl implements FileUserService {
     }
 
     @Override
-    public String compareIOPerformance(String filePath) {
+    public String compareIOPerformance(String filePath)  {
         /*
-         * TODO CE1.a: Implementar comparación de rendimiento I/O con y sin buffering
+         *
          * 
          * Pasos requeridos:
          * 1. Validar que archivo existe
@@ -133,15 +121,75 @@ public class FileUserServiceImpl implements FileUserService {
          *  BufferedReader: 45ms
          *  Mejora: 96.4% más rápido con buffer"
          */
-        
-        // TODO: Implementar aquí
-        throw new UnsupportedOperationException("TODO: Implementar compareIOPerformance con medición de tiempo");
+
+        File file = new File(filePath);
+
+        if (!file.exists()) {
+            return "Error: El archivo o directorio no existe: " + filePath;
+        }
+
+        if (!file.isFile()) {
+            return "Error: La ruta indicada es un directorio: " + filePath;
+        }
+
+        long fileReaderTime;
+        long bufferedReaderTime;
+
+        // SIN BUFFER
+
+        long startTime = System.currentTimeMillis();
+
+        try(FileReader fileReader = new FileReader(file)) {
+            // read() devuelve -1 cuando se llega al final del archivo.
+            while (fileReader.read() != -1){
+
+            }
+        }catch (IOException e){
+            return "Error leyendo con FileReader: " + e.getMessage();
+        }
+
+        long endTime = System.currentTimeMillis();
+
+        // El tiempo de lectura de fileReader es el final - el inicial
+        fileReaderTime = endTime - startTime;
+
+        // CON BUFFER
+        startTime = System.currentTimeMillis();
+
+        try(BufferedReader bufferedReader = new BufferedReader(new FileReader(file))) {
+
+            // Cuando termina devuelve null
+            while (bufferedReader.readLine() != null){
+
+            }
+
+
+        }catch (IOException e){
+            return "Error leyendo con BufferedReader: " + e.getMessage();
+        }
+        endTime = System.currentTimeMillis();
+        bufferedReaderTime = endTime - startTime;
+
+        double mejora;
+        StringBuilder resultado = new StringBuilder();
+        resultado.append(String.format("\nFileReader: %dms%n", fileReaderTime));
+        resultado.append(String.format("BufferedReader: %dms", bufferedReaderTime));
+
+        if (fileReaderTime > bufferedReaderTime) {
+            mejora = ((double) (fileReaderTime - bufferedReaderTime) / fileReaderTime) * 100;
+            resultado.append(String.format("%nMejora: %.1f%% mas rapido con buffer\n", mejora));
+        } else if (bufferedReaderTime > fileReaderTime) {
+            mejora = ((double) (bufferedReaderTime - fileReaderTime) / bufferedReaderTime) * 100;
+            resultado.append(String.format("%nMejora: %.1f%% mas rapido con fileReader\n", mejora));
+        } else {
+            resultado.append("\nNo hay diferencia de rendimiento");
+        }
+        return resultado.toString();
     }
 
     @Override
     public String compareNIOvsIO(String filePath) {
         /*
-         * TODO CE1.a: Implementar comparación entre enfoques NIO y IO tradicional
          * 
          * Pasos requeridos:
          * 1. Enfoque tradicional (java.io):
@@ -151,7 +199,6 @@ public class FileUserServiceImpl implements FileUserService {
          * 2. Enfoque NIO (java.nio.file):
          *    - Usar Path y Files.exists() para verificar
          *    - Usar Files.readAllLines() para leer todo de una vez
-         *    - Obtener tamaño de lista directamente
          * 3. Comparar sintaxis y funcionalidades
          * 4. Medir tiempo de ejecución de ambos
          * 5. Retornar comparación formateada
@@ -161,9 +208,61 @@ public class FileUserServiceImpl implements FileUserService {
          *  NIO: 3 líneas de código, 32ms
          *  NIO es más conciso y eficiente"
          */
-        
-        // TODO: Implementar aquí
-        throw new UnsupportedOperationException("TODO: Implementar compareNIOvsIO usando Files vs BufferedReader");
+
+        File file = new File(filePath);
+
+        if (!file.exists()){
+            return "Error: El archivo o directorio no existe: " + filePath;
+        }
+
+        if(!file.isFile()){
+            return "Error: La ruta indicada es un directorio: " + filePath;
+        }
+
+        // CONTAR LINEAS CON BUFFER
+        long NIOReaderTime;
+        long bufferedReaderTime;
+        long endTime;
+
+        long startTime = System.currentTimeMillis();
+        try (BufferedReader bufferedReader = new BufferedReader(new FileReader(file))){
+            while (bufferedReader.readLine() != null){
+
+            }
+        }catch (IOException e){
+            return "Error leyendo con BufferedReader: " + e.getMessage();
+        }
+        endTime = System.currentTimeMillis();
+        bufferedReaderTime = endTime - startTime;
+
+        // COMPROBAR Y CONTAR LINEAS CON readAllLines()
+        Path path = Paths.get(filePath);
+        if (!Files.exists(path)){
+            return "Error: El archivo no existe: " + filePath;
+        }
+
+        startTime = System.currentTimeMillis();
+        try{
+            Files.readAllLines(path);
+
+        }catch (IOException e){
+            return "Error leyendo con FileReader: " + e.getMessage();
+        }
+        endTime = System.currentTimeMillis();
+        NIOReaderTime = endTime - startTime;
+
+        StringBuilder resultado = new StringBuilder();
+        resultado.append(String.format("\nIO Tradicional: %d lineas de codigo, %dms\nNIO: %d lineas de codigo, %dms\n", 26, bufferedReaderTime, 16, NIOReaderTime));
+
+        if (bufferedReaderTime < NIOReaderTime) {
+            resultado.append("IO Tradidicional ha sido mas eficiente\n");
+        }else if (NIOReaderTime < bufferedReaderTime) {
+            resultado.append("NIO es mas conciso y eficiente\n");
+        }else{
+            resultado.append("No hay diferencia de rendimiento\n");
+        }
+
+        return resultado.toString();
     }
 
     // ========================================================================================
@@ -173,7 +272,6 @@ public class FileUserServiceImpl implements FileUserService {
     @Override
     public String searchTextInFile(String filePath, String searchText) {
         /*
-         * TODO CE1.b: Implementar búsqueda de texto en archivo (actividad 4 de la presentación vista en clase)
          * 
          * Pasos requeridos:
          * 1. Validar que archivo existe
@@ -189,15 +287,46 @@ public class FileUserServiceImpl implements FileUserService {
          *  Línea 12: otra línea con el texto
          *  Total: 2 ocurrencias encontradas"
          */
+
+        File file = new File(filePath);
+
+        if (!file.exists()){
+            return "Error: El archivo o directorio no existe: " + filePath;
+        }
+
+        if (!file.isFile()){
+            return "Error: La ruta indicada es un directorio: " + filePath;
+        }
+
+        int contadorBuffer = 0;
+        HashMap<Integer, String> coincidencias = new HashMap<>();
+        String linea;
+
+        try(BufferedReader bufferedReader = new BufferedReader(new FileReader(file))){
+
+            while ((linea = bufferedReader.readLine()) != null){
+                contadorBuffer++;
+                if (linea.contains(searchText)){
+                    coincidencias.put(contadorBuffer, linea);
+                }
+            }
+        }catch(IOException e){
+            return "Error leyendo con BufferedReader: " + e.getMessage();
+        }
+
+        StringBuilder resultado = new StringBuilder();
+        for (Map.Entry<Integer, String> entry : coincidencias.entrySet()) {
+            resultado.append(String.format("Linea (%d): %s%n", entry.getKey(), entry.getValue()));
+        }
+
+        resultado.append(String.format("\nTotal: %d ocurrencias", coincidencias.size()));
         
-        // TODO: Implementar aquí
-        throw new UnsupportedOperationException("TODO: Implementar searchTextInFile usando BufferedReader");
+        return resultado.toString();
     }
 
     @Override
     public String randomAccessRead(String filePath, long position, int length) {
         /*
-         * TODO CE1.b: Implementar lectura desde posición específica
          * 
          * Pasos requeridos:
          * 1. Validar que archivo existe
@@ -212,15 +341,45 @@ public class FileUserServiceImpl implements FileUserService {
          * - RandomAccessFile (constructor con modo "r", seek, read)
          * - String constructor para convertir bytes
          */
-        
-        // TODO: Implementar aquí
-        throw new UnsupportedOperationException("TODO: Implementar randomAccessRead usando RandomAccessFile");
+
+        File file = new File(filePath);
+
+        if (!file.exists()){
+            return "Error: El archivo o directorio no existe: " + filePath;
+        }
+
+        if (!file.isFile()){
+            return "Error: La ruta indicada es un directorio: " + filePath;
+        }
+
+        try(RandomAccessFile randomAccessFile = new RandomAccessFile(filePath, "r")){
+            randomAccessFile.seek(position);
+
+            // Creo el array de bytes (buffer)
+            byte[] buffer = new byte[length];
+
+            // Leo los datos y compruebo que no esté vacío
+            if (randomAccessFile.read(buffer) != -1){
+                // Convierto los bytes a String con el constructor de la clase String
+                return new String(buffer);
+            }
+
+            // Si está vacío, devuelvo un error
+            return "Error: selección vacía";
+
+
+        }catch (FileNotFoundException e){
+            return "Error: No he encontrado el archivo en: " + filePath;
+        }catch (IOException e){ // También captura la excepción EOF
+            return "Error buscando la posición: " + e.getMessage();
+        }
+
+
     }
 
     @Override
     public boolean randomAccessWrite(String filePath, long position, String content) {
         /*
-         * TODO CE1.b: Implementar escritura en posición específica
          * 
          * Pasos requeridos:
          * 1. Crear directorios padre si no existen
@@ -235,16 +394,53 @@ public class FileUserServiceImpl implements FileUserService {
          * - RandomAccessFile (constructor con modo "rw", seek, write)
          * - String.getBytes() para obtener bytes
          */
-        
-        // TODO: Implementar aquí
-        throw new UnsupportedOperationException("TODO: Implementar randomAccessWrite usando RandomAccessFile");
+
+        File file = new File(filePath);
+
+        // Si el archivo no existe, lo creo para poder escribir en él
+        if (!file.exists()){
+            try{
+                Files.createFile(Path.of(filePath));
+            }catch (IOException e){
+                return false;
+            }
+
+        }else {
+            if (!file.isFile()){
+                return false;
+            }
+        }
+
+
+        // Compruebo si tiene un directorio padre, si no es así lo creo con Files.createDirectories();
+        if (!file.getParentFile().exists()){
+            try{
+                Files.createDirectories(Path.of(file.getParent()));
+            }catch (IOException e){
+                return false;
+            }
+        }
+
+        try (RandomAccessFile randomAccessFile = new RandomAccessFile(filePath, "rw")){
+            randomAccessFile.seek(position);
+
+            // Convierto 'content' a bytes con content.getBytes() y se lo paso al métod.o write()
+            randomAccessFile.write(content.getBytes());
+
+            randomAccessFile.close();
+
+            // Si no ha saltado ninguna excepción, retorno 'true'
+            return true;
+        } catch (IOException e){ // Esta excepción también abarca la de FileNotFound
+            return false;
+        }
+
     }
 
     @Override
     public boolean convertFileEncoding(String sourceFile, String targetFile, 
                                      String sourceCharset, String targetCharset) {
         /*
-         * TODO CE1.b: Implementar conversión entre codificaciones (UTF-8, ISO-8859-1)
          * 
          * Pasos requeridos:
          * 1. Validar que archivo origen existe
@@ -259,9 +455,41 @@ public class FileUserServiceImpl implements FileUserService {
          * InputStreamReader isr = new InputStreamReader(new FileInputStream(source), "ISO-8859-1");
          * OutputStreamWriter osw = new OutputStreamWriter(new FileOutputStream(target), "UTF-8");
          */
-        
-        // TODO: Implementar aquí
-        throw new UnsupportedOperationException("TODO: Implementar convertFileEncoding usando InputStreamReader/OutputStreamWriter");
+
+        File file = new File(sourceFile);
+
+
+        if (!file.exists() || !file.isFile()){
+            return false;
+        }
+
+        // Compruebo que exista el fichero final y que tenga un directorio padre
+        File outFile = new File(targetFile);
+        File outFileParent = outFile.getParentFile();
+
+        if (!outFileParent.exists() || !outFileParent.isDirectory()){   // Si no tiene directorio padre, lo creo
+            if(!outFileParent.mkdirs()){    // Si no he podido crear el directorio padre, devuelvo false
+                return false;
+            }
+        }
+
+        // Creo el BufferedReader que rodea el InputStreamReader con el enconding antiguo
+        // Y también creo el BufferedWriter que rodea el OutputStreamReader con el encoding nuevo
+        try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader (new FileInputStream(sourceFile), sourceCharset));
+        BufferedWriter bufferedWriter = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(targetFile), targetCharset))){
+
+            while (bufferedReader.readLine() != null){
+                bufferedWriter.write(bufferedReader.readLine());
+            }
+
+            // Si hay éxito, devuelve 'true'
+            return true;
+
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
+
     }
 
     // ========================================================================================
@@ -271,7 +499,6 @@ public class FileUserServiceImpl implements FileUserService {
     @Override
     public List<String> listUserFiles(String directoryPath) {
         /*
-         * TODO CE1.c: Implementar listado de archivos usando Java I/O
          * 
          * Pasos requeridos:
          * 1. Validar que directoryPath existe y es directorio
@@ -285,9 +512,37 @@ public class FileUserServiceImpl implements FileUserService {
          * - Stream API para filtrado
          * - FilenameFilter o predicados
          */
-        
-        // TODO: Implementar aquí
-        throw new UnsupportedOperationException("TODO: Implementar listUserFiles usando Files.list()");
+
+        File directorio = new File(directoryPath);
+
+        // Valido que exista y que es un directorio
+        if (!directorio.exists()){
+            return null;
+        }
+
+        if (!directorio.isDirectory()){
+            return null;
+        }
+
+        // Creo la lista que voy a rellenar y devolver
+        List<String> listaFinal = new ArrayList<>();
+        if (directorio.listFiles() == null){
+            return listaFinal;
+        }else{
+            // Esta es la lista de archivos que contiene el directorio
+            List<File> listaArchivos = new ArrayList<>(List.of(directorio.listFiles()));
+
+            // Itero esa lista para filtrarla por directorios y ficheros .csv / .xml / .json
+            for (File archivo : listaArchivos){
+                if (!archivo.isDirectory() && archivo.getName().endsWith(".csv") || archivo.getName().endsWith(".xml") || archivo.getName().endsWith(".json")){
+                    listaFinal.add(archivo.getName());
+                }
+            }
+
+            return listaFinal;
+        }
+
+
     }
 
     @Override
@@ -308,6 +563,30 @@ public class FileUserServiceImpl implements FileUserService {
          * - Files.createDirectories()
          * - Files.isReadable(), Files.isWritable()
          */
+
+        File directory = new File(basePath);
+
+        // Si no existe, lo creo
+        if (!directory.exists()){
+            try{
+                // Uso createDirectories() en vez de createDirectory() por si los directorios hasta la ruta indicada tampoco existen
+                Files.createDirectories(Path.of(basePath));
+
+            }catch (IOException e){
+                return false;
+            }
+
+        }
+        // Si no es un directorio, devuelve false
+        if (!directory.isDirectory()){
+            return false;
+        }
+
+        try{
+            Files.createDirectory(Path.of(basePath+"/data"));
+        }catch (IOException e){
+            return false;
+        }
         
         // TODO: Implementar aquí
         throw new UnsupportedOperationException("TODO: Implementar validateDirectoryStructure usando Files API");

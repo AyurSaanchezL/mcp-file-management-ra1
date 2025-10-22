@@ -513,6 +513,10 @@ public class McpServerController {
             response.put("count", files.size());
             response.put("status", "success");
 
+            // Para ver el resultado, que no lo muestra por pantalla
+            for (int i = 0; i < files.size(); i++) {
+                System.out.println(files.get(i));
+            }
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             logger.error("Error listando archivos: " + directoryPath, e);

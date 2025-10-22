@@ -10,7 +10,7 @@ description = 'Esqueleto MCP para RA1: Gestión de información en ficheros'
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(17)
+        languageVersion = JavaLanguageVersion.of(21)
     }
 }
 

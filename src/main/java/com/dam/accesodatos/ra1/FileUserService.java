@@ -3,6 +3,7 @@ package com.dam.accesodatos.ra1;
 import com.dam.accesodatos.model.User;
 import org.springframework.ai.mcp.server.annotation.Tool;
 
+import java.io.IOException;
 import java.util.List;
 
 /**
@@ -243,7 +244,7 @@ public interface FileUserService {
      */
     @Tool(name = "compare_io_performance", 
           description = "Compara rendimiento BufferedReader vs FileReader")
-    String compareIOPerformance(String filePath);
+    String compareIOPerformance(String filePath) throws IOException;
 
     /**
      * ACCESO ALEATORIO: Lee usuarios desde posición específica usando RandomAccessFile
