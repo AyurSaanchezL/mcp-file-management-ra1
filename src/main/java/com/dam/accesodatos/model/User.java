@@ -44,8 +44,9 @@ public class User {
         this.updatedAt = LocalDateTime.now();
     }
 
-    public User(String name, String email, String department, String role) {
+    public User(Long id, String name, String email, String department, String role) {
         this();
+        this.id = id;
         this.name = name;
         this.email = email;
         this.department = department;

@@ -3,10 +3,22 @@ package com.dam.accesodatos.ra1;
 import com.dam.accesodatos.model.User;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+import org.xml.sax.SAXException;
 
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.*;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
 import java.io.*;
 import java.nio.file.*;
 import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
@@ -313,7 +325,7 @@ public class FileUserServiceImpl implements FileUserService {
 
         StringBuilder resultado = new StringBuilder();
         for (Map.Entry<Integer, String> entry : coincidencias.entrySet()) {
-            resultado.append(String.format("Linea (%d): %s%n", entry.getKey(), entry.getValue()));
+            resultado.append(String.format("%nLinea (%d): %s%n", entry.getKey(), entry.getValue()));
         }
 
         resultado.append(String.format("\nTotal: %d ocurrencias", coincidencias.size()));
@@ -363,7 +375,6 @@ public class FileUserServiceImpl implements FileUserService {
 
             // Si está vacío, devuelvo un error
             return "Error: selección vacía";
-
 
         }catch (FileNotFoundException e){
             return "Error: No he encontrado el archivo en: " + filePath;
@@ -424,8 +435,6 @@ public class FileUserServiceImpl implements FileUserService {
             // Convierto 'content' a bytes con content.getBytes() y se lo paso al métod.o write()
             randomAccessFile.write(content.getBytes());
 
-            randomAccessFile.close();
-
             // Si no ha saltado ninguna excepción, retorno 'true'
             return true;
         } catch (IOException e){ // Esta excepción también abarca la de FileNotFound
@@ -456,9 +465,8 @@ public class FileUserServiceImpl implements FileUserService {
         File file = new File(sourceFile);
 
 
-        if (!file.exists() || !file.isFile()){
+        if (!file.exists() || !file.isFile())
             return false;
-        }
 
         // Compruebo que exista el fichero final y que tenga un directorio padre
         File outFile = new File(targetFile);
@@ -473,7 +481,7 @@ public class FileUserServiceImpl implements FileUserService {
         // Creo el BufferedReader que rodea el InputStreamReader con el enconding antiguo
         // Y también creo el BufferedWriter que rodea el OutputStreamReader con el encoding nuevo
         try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader (new FileInputStream(sourceFile), sourceCharset));
-        BufferedWriter bufferedWriter = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(targetFile), targetCharset))){
+        BufferedWriter bufferedWriter = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outFile), targetCharset))){
 
             while (bufferedReader.readLine() != null){
                 bufferedWriter.write(bufferedReader.readLine());
@@ -545,7 +553,6 @@ public class FileUserServiceImpl implements FileUserService {
     @Override
     public boolean validateDirectoryStructure(String basePath) {
         /*
-         * TODO CE1.c: Implementar validación de estructura de directorios
          * 
          * Pasos requeridos:
          * 1. Definir estructura esperada (ej: data/, exports/, temp/)
@@ -579,14 +586,64 @@ public class FileUserServiceImpl implements FileUserService {
             return false;
         }
 
+        List<File> listaArchivos = new ArrayList<>(List.of(directory.listFiles()));
+        boolean dataDirectory = false;
+        File data = null;
+        boolean exportsDirectory = false;
+        File exports = null;
+        boolean tempDirectory = false;
+        File temp = null;
+        boolean todoCorrecto;
+
         try{
-            Files.createDirectory(Path.of(basePath+"/data"));
+            for (File archivo : listaArchivos){
+                if (archivo.isDirectory() && archivo.getName().equalsIgnoreCase("data")){
+                    dataDirectory = true;
+                    data = archivo;
+                }else if (archivo.isDirectory() && archivo.getName().equalsIgnoreCase("exports")){
+                    exportsDirectory = true;
+                    exports = archivo;
+                }else if (archivo.isDirectory() && archivo.getName().equalsIgnoreCase("temp")){
+                    tempDirectory = true;
+                    temp = archivo;
+                }
+            }
+
+            todoCorrecto = dataDirectory && exportsDirectory && tempDirectory;
+
+            // Si falta algún directorio (o todos) los creo
+            if (!todoCorrecto) {
+                if (!dataDirectory) {
+                    data = Files.createDirectory(Path.of(basePath + "/data")).toFile();
+                }
+                if (!exportsDirectory) {
+                    exports = Files.createDirectory(Path.of(basePath + "/exports")).toFile();
+                }
+                if (!tempDirectory) {
+                    temp = Files.createDirectory(Path.of(basePath + "/temp")).toFile();
+                }
+            }
+
+            // Compruebo los permisos. Si no son correctos, los modifico
+            if (!data.canWrite()){
+                data.setWritable(true);
+            }else if (!data.canRead()){
+                data.setReadable(true);
+            }else if (!exports.canWrite()){
+                exports.setWritable(true);
+            }else if (!exports.canRead()){
+                exports.setReadable(true);
+            }else if (!temp.canWrite()){
+                temp.setWritable(true);
+            }else if (!temp.canRead()){
+                temp.setReadable(true);
+            }
+            return true;
+
+
         }catch (IOException e){
             return false;
         }
-        
-        // TODO: Implementar aquí
-        throw new UnsupportedOperationException("TODO: Implementar validateDirectoryStructure usando Files API");
         
         // Estructura sugerida:
         // basePath/
@@ -598,7 +655,6 @@ public class FileUserServiceImpl implements FileUserService {
     @Override
     public String createTempFile(String prefix, String content) {
         /*
-         * TODO CE1.c: Implementar creación de archivo temporal
          * 
          * Pasos requeridos:
          * 1. Usar File.createTempFile(prefix, ".tmp") para crear archivo temporal
@@ -614,15 +670,27 @@ public class FileUserServiceImpl implements FileUserService {
          * - File.createTempFile() (método estático)
          * - FileWriter para escribir contenido
          */
-        
-        // TODO: Implementar aquí
-        throw new UnsupportedOperationException("TODO: Implementar createTempFile usando File.createTempFile()");
+
+        File file;
+
+        try {
+            // El método createTempFile, genera el archivo con números aleatorios entre el prefijo y el sufijo
+            file = File.createTempFile(prefix, ".tmp");
+
+            try (BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(file))) {
+                bufferedWriter.write(content);
+            }
+
+        }catch (IOException e){
+            return "Error al crear el archivo temporal "+e.getMessage();
+        }
+
+        return "Archivo temporal creado con éxito";
     }
 
     @Override
     public String formatTextFile(String sourceFile) {
         /*
-         * TODO CE1.c: Implementar formateador basado en ejemplo ArreglarFichero de la presentación vista en clase
          * 
          * Pasos requeridos (basado en ArreglarFichero de la presentación):
          * 1. Validar que archivo origen existe
@@ -641,9 +709,69 @@ public class FileUserServiceImpl implements FileUserService {
          * - boolean espacios = false (espacios consecutivos)
          * - boolean primerLetra = false (primera letra encontrada)
          */
-        
-        // TODO: Implementar aquí
-        throw new UnsupportedOperationException("TODO: Implementar formatTextFile basado en ejemplo ArreglarFichero de la presentación vista en clase");
+
+        boolean esEspacio = false;
+        boolean primeraLetra;
+
+        File file = new File(sourceFile);
+        File fileTemp;
+        StringBuilder lineFormated = new StringBuilder();
+
+        if (!file.exists()){
+            return "ERROR: el archivo introducido no existe";
+        }
+
+        if (file.isDirectory()){
+            return "ERROR: la ruta indicada es un directorio";
+        }
+
+        try{
+            fileTemp = File.createTempFile("formatTextFile", ".tmp");
+
+            try (BufferedReader br = new BufferedReader(new FileReader(file));
+            BufferedWriter bw = new BufferedWriter(new FileWriter(fileTemp))) {
+                for (String line = br.readLine(); line != null; line = br.readLine()){
+
+                    primeraLetra = true;
+
+                    // Eliminar espacios al principio de línea (princLinea flag)
+                    line = line.stripLeading();
+
+                    // Convertir primera letra de línea a mayúscula (primerLetra flag)
+
+                    for (char c: line.toCharArray()){
+                        if (primeraLetra){
+                            String letra = String.valueOf(c).toUpperCase();
+                            lineFormated.append(letra);
+                            primeraLetra = false;
+                        }else{
+                            if (c == ' '){
+                                // Sustituir múltiples espacios consecutivos por uno solo (espacios flag)
+                                if (!esEspacio){
+                                    lineFormated.append(c);
+                                }
+                                esEspacio = true;
+                            }else{
+                                // Mantener otros caracteres como están
+                                esEspacio = false;
+                                lineFormated.append(c);
+                            }
+                        }
+
+                    }
+                    lineFormated.append('\n');
+
+                }
+                // Escribir línea procesada a archivo temporal
+                bw.write(lineFormated.toString());
+            }
+
+        }catch (IOException e){
+            return "ERROR: no se pudo completar la operación";
+        }
+
+        return fileTemp.getAbsolutePath();
+
     }
 
     // ========================================================================================
@@ -653,7 +781,6 @@ public class FileUserServiceImpl implements FileUserService {
     @Override
     public List<User> readUsersFromXML(String filePath) {
         /*
-         * TODO CE1.d: Implementar lectura de XML usando DOM parser
          * 
          * Pasos requeridos:
          * 1. Crear DocumentBuilderFactory y DocumentBuilder
@@ -668,11 +795,58 @@ public class FileUserServiceImpl implements FileUserService {
          * - Document, Element, NodeList
          * - NO usar JAXB automático
          */
-        
+
+        DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
         List<User> users = new ArrayList<>();
+        Document documento;
+        File file = new File(filePath);
+
+        // Verifico que el archivo exista y sea un archivo
+        if (!file.exists() || !file.isFile()){
+            return null;
+        }
+
+        try{
+            DocumentBuilder documentBuilder = documentBuilderFactory.newDocumentBuilder();
+
+            // Usar DocumentBuilder.parse() para obtener Document
+            documento = documentBuilder.parse(file);
+
+        }catch (Exception e){
+            e.printStackTrace();
+            return null;
+        }
+
+        // Obtener todos los elementos "user" con getElementsByTagName()
+        NodeList nodeList = documento.getElementsByTagName("user");
+
+        // Recorro todos los elementos 'user'
+        for (int i = 0; i < nodeList.getLength(); i++){
+            Node node = nodeList.item(i);
+
+            // Compruebo que sean elementos y no comentarios o similar
+            if (node.getNodeType() == Node.ELEMENT_NODE){
+                Element element = (Element) node;
+                Long id = Long.parseLong(element.getElementsByTagName("id").item(0).getTextContent());
+
+                // Se usaría element.getAttibute("name"); si name fuese un atributo del elemento <user> (<user id="1" name="Juan" />)
+                String name = element.getElementsByTagName("name").item(0).getTextContent();
+                String email = element.getElementsByTagName("email").item(0).getTextContent();
+                String department = element.getElementsByTagName("department").item(0).getTextContent();
+                String role = element.getElementsByTagName("role").item(0).getTextContent();
+                Boolean active = Boolean.parseBoolean(element.getElementsByTagName("active").item(0).getTextContent());
+                LocalDateTime createdAt = LocalDateTime.parse(element.getElementsByTagName("createdAt").item(0).getTextContent());
+                LocalDateTime updatedAt = LocalDateTime.parse(element.getElementsByTagName("updatedAt").item(0).getTextContent());
+
+                User user = new User(id, name, email, department, role);
+                user.setActive(active);
+                user.setCreatedAt(createdAt);
+                user.setUpdatedAt(updatedAt);
+                users.add(user);
+            }
+        }
         
-        // TODO: Implementar aquí
-        throw new UnsupportedOperationException("TODO: Implementar readUsersFromXML usando DOM parser");
+        return users;
         
         // ESTRUCTURA XML esperada:
         // <users>
@@ -703,9 +877,89 @@ public class FileUserServiceImpl implements FileUserService {
          * - TransformerFactory, Transformer
          * - DOMSource, StreamResult
          */
-        
-        // TODO: Implementar aquí
-        throw new UnsupportedOperationException("TODO: Implementar writeUsersToXML usando DOM y Transformer");
+
+        // ESTE MÉTODO DA ERROR PORQUE NO LEE BIEN LOS USUARIOS DESDE EL JSON
+
+        File file = new File(filePath);
+        DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
+        DocumentBuilder documentBuilder;
+        Document document;
+
+        // Si no existe o si es un directorio, creo el archivo
+        if (!file.exists() || !file.isFile()){
+            try{
+                file = Files.createFile(file.toPath()).toFile();
+
+            }catch (IOException e){
+                e.printStackTrace();
+            }
+        }
+
+        try{
+            documentBuilder = documentBuilderFactory.newDocumentBuilder();
+            document = documentBuilder.newDocument();
+
+            // Elemento raíz
+            Element rootElement = document.createElement("users");
+            document.appendChild(rootElement);
+            for (User user : users){
+                Element userElement =  document.createElement("user");
+
+                Element userId = document.createElement("id");
+                userId.setTextContent(String.valueOf(user.getId()));
+                userElement.appendChild(userId);
+
+                Element userName = document.createElement("name");
+                userName.setTextContent(user.getName());
+                userElement.appendChild(userName);
+
+                Element userEmail = document.createElement("email");
+                userEmail.setTextContent(user.getEmail());
+                userElement.appendChild(userEmail);
+
+                Element department = document.createElement("department");
+                department.setTextContent(user.getDepartment());
+                userElement.appendChild(department);
+
+                Element role = document.createElement("role");
+                role.setTextContent(user.getRole());
+                userElement.appendChild(role);
+
+                Element active = document.createElement("active");
+                active.setTextContent(String.valueOf(user.getActive()));
+                userElement.appendChild(active);
+
+                Element createdAt = document.createElement("createdAt");
+                createdAt.setTextContent(String.valueOf(user.getCreatedAt()));
+                userElement.appendChild(createdAt);
+
+                Element updatedAt = document.createElement("updatedAt");
+                updatedAt.setTextContent(String.valueOf(user.getUpdatedAt()));
+                userElement.appendChild(updatedAt);
+
+                rootElement.appendChild(userElement);
+            }
+
+            TransformerFactory transformerFactory = TransformerFactory.newInstance();
+            Transformer transformer = transformerFactory.newTransformer();
+
+            // Para formatear el xml y que se vea bonito
+            transformer.setOutputProperty(OutputKeys.INDENT, "yes");
+            transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
+
+            // Preparo el origen y el destino
+            Source source = new DOMSource(document);
+            Result result = new StreamResult(file);
+
+            // Transformo el document
+            transformer.transform(source, result);
+
+
+        }catch (Exception e){
+            return false;
+        }
+
+        return true;
     }
 
     @Override

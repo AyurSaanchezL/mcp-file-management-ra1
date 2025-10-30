@@ -7,6 +7,8 @@ import jakarta.validation.constraints.*;
  * Usado en herramientas MCP para validar entrada de datos
  */
 public class UserCreateDto {
+
+    private Long id;
     
     @NotBlank(message = "El nombre es obligatorio")
     @Size(min = 2, max = 50, message = "El nombre debe tener entre 2 y 50 caracteres")
@@ -24,11 +26,20 @@ public class UserCreateDto {
 
     public UserCreateDto() {}
 
-    public UserCreateDto(String name, String email, String department, String role) {
+    public UserCreateDto(Long id, String name, String email, String department, String role) {
+        this.id = id;
         this.name = name;
         this.email = email;
         this.department = department;
         this.role = role;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
     }
 
     public String getName() {
@@ -67,12 +78,13 @@ public class UserCreateDto {
      * Convierte el DTO a entidad User
      */
     public User toUser() {
-        return new User(this.name, this.email, this.department, this.role);
+        return new User(this.id, this.name, this.email, this.department, this.role);
     }
 
     @Override
     public String toString() {
         return "UserCreateDto{" +
+                "id='" + id + '\'' +
                 "name='" + name + '\'' +
                 ", email='" + email + '\'' +
                 ", department='" + department + '\'' +

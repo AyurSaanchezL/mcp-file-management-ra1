@@ -1,5 +1,6 @@
 package com.dam.accesodatos.mcp;
 
+import com.dam.accesodatos.model.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -7,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import com.dam.accesodatos.ra1.FileUserService;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -464,6 +466,39 @@ public class McpServerController {
 
         try {
             List<com.dam.accesodatos.model.User> users = new java.util.ArrayList<>();
+
+            for (Map<String, Object> userData : usersData) {
+                User user = new User();
+
+                // Convertir id
+                if (userData.get("id") != null) {
+                    user.setId(((Number) userData.get("id")).longValue());
+                }
+
+                // Asignar campos String directamente
+                user.setName((String) userData.get("name"));
+                user.setEmail((String) userData.get("email"));
+                user.setDepartment((String) userData.get("department"));
+                user.setRole((String) userData.get("role"));
+
+                // Convertir active
+                if (userData.get("active") != null) {
+                    user.setActive((Boolean) userData.get("active"));
+                }
+
+                // Convertir fechas LocalDateTime
+                if (userData.get("createdAt") != null) {
+                    String createdAtStr = (String) userData.get("createdAt");
+                    user.setCreatedAt(LocalDateTime.parse(createdAtStr));
+                }
+
+                if (userData.get("updatedAt") != null) {
+                    String updatedAtStr = (String) userData.get("updatedAt");
+                    user.setUpdatedAt(LocalDateTime.parse(updatedAtStr));
+                }
+
+                users.add(user);
+            }
 
             boolean success = fileUserService.writeUsersToXML(users, filePath);
 
